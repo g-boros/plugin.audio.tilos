@@ -8,8 +8,8 @@
     <provides>audio</provides>
   </extension>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en">Listen to Radio Tilos</summary>
-    <description lang="en">Browse archive and listen to live stream</description>
+    <summary lang="en">Browse archive episodes and listen to Radio Tilos</summary>
+    <description lang="en">Tilos Rádió is a community, non-profit, listener supported radio station in Budapest, Hungary.</description>
     <disclaimer lang="en"></disclaimer>
     <language>
     </language>
