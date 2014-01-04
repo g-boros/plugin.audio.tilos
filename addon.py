@@ -171,22 +171,20 @@ def showShow(alias):
 
 def playShow(file):
     # log(' > playShow(%s)' % file)
-    
+
     # log(' Play file: ' + file)
+
     xbmc.Player().play(file)
-    
 #    if (xbmc.Player().isPlaying()):
 #         log(' Playing..')
-    
-    
+
 ############################################
 # Start plugin
 ############################################
 # log(' > mode: ' + mode[0] if mode is not None else '')
 
 if mode is None:
-    showRootMenu()    
-    
+    showRootMenu()
 elif mode[0] == 'talkShows':
     showShows(1)
 elif mode[0] == 'musicShows':
