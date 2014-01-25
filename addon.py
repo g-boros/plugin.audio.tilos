@@ -3,35 +3,37 @@
     live stream of Radio Tilos
 """
 
-import sys, os, os.path, xbmcaddon
-import xbmc, xbmcgui, xbmcplugin
+import sys
 from urllib2 import Request, urlopen, URLError
 import urlparse
 import urllib
-from HTMLParser import HTMLParser
-from shutil import rmtree, copy
-import traceback
 from pprint import pprint
 import json
 import time
 import calendar
 import datetime
 
+import xbmcaddon
+import xbmc
+import xbmcgui
+import xbmcplugin
+
+
 ############################################
 # Define required statics
 ############################################
 
 __plugin__ = "Tilos"
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 __author__ = 'Gabor Boros'
-__date__ = '2013-12-28'
+__date__ = '2014-01-25'
 __addon__ = xbmcaddon.Addon()
 __addonname__ = __addon__.getAddonInfo('name')
 
 BASE_URL = 'http://tilos.hu'
 BASE_URL_SHOWS = BASE_URL + '/api/v0/show'
 BASE_URL_EPISODES = BASE_URL_SHOWS + '/%s/episodes?from=%d&to=%d'
-HEADERS = {'User-Agent' : 'Mozilla 5.10'} 
+HEADERS = {'User-Agent' : 'XBMC Tilos 0.0.3'} 
 LIVE_URL_256 = 'http://stream.tilos.hu/tilos.m3u'
 LIVE_URL_128 = 'http://stream.tilos.hu/tilos_128.mp3.m3u'
 
@@ -174,7 +176,7 @@ def playShow(file):
 
     # log(' Play file: ' + file)
 
-    xbmc.Player().play(file)
+    xbmc.Player(xbmc.PLAYER_CORE_MPLAYER).play(file)
 #    if (xbmc.Player().isPlaying()):
 #         log(' Playing..')
 
