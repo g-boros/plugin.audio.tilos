@@ -1,5 +1,6 @@
 v0.0.3
-- Change header information
+- List shows by Date (specific,today,yesterday)
+- Display current show name in main view
 
 v0.0.2
 - Ability to list shows by type (talk vs music)
