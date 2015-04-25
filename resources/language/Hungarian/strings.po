@@ -159,3 +159,11 @@ msgctxt "#30036"
 msgid "Party"
 msgstr "Party"
 
+msgctxt "#30037"
+msgid "Please wait.."
+msgstr "Kérem várjon.."
+
+msgctxt "#30038"
+msgid "Opening stream"
+msgstr "Adatfolyam letöltése"
+

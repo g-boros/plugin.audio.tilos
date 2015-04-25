@@ -51,7 +51,8 @@ xbmcplugin.setContent(addon_handle, 'songs')
 Addon = xbmcaddon.Addon("plugin.audio.tilos")
 
 mode = args.get('mode', None)
-debug = True
+
+debug = False
 
 ############################################
 # Functions
@@ -71,7 +72,7 @@ def log(msg):
 
 
 def build_url(query):
-    return base_url + '?' + urllib.urlencode(query)
+    return base_url + '?' + urllib.urlencode('' if query is None else query)
 
 
 def getURL(url):
@@ -250,8 +251,10 @@ def listShowsByDay(year, month, day):
 
     startLocal = startLocal-60*60*1
 
-    jdata.reverse()
-    print jdata
+    playlist = xbmc.PlayList(0)
+    playlist.clear()
+
+    showPos = 0
     for episode in jdata:
         if (episode['plannedFrom'] < endLocal and
             episode['plannedFrom'] >= startLocal and
@@ -266,13 +269,20 @@ def listShowsByDay(year, month, day):
             li.setInfo('music', {'title': title,
                                  'artist': show['name'],
                                  'year': year})
-            li.setProperty('IsPlayable', 'true')
+            li.setProperty('IsPlayable', 'false')
 
             if show['banner'] is not None:
                 li.setThumbnailImage(show['banner'])
 
-            mp3Url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
+            url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
+            mp3Url = build_url({'mode': 'playURL',
+                                'url': url,
+                                'pos': showPos,
+                                })
+
             xbmcplugin.addDirectoryItem(handle=addon_handle, url=mp3Url, listitem=li, isFolder=False)
+            playlist.add(url, li)
+            showPos += 1
 
     xbmcplugin.endOfDirectory(addon_handle)
 
@@ -319,24 +329,38 @@ def listShow(alias, name):
     endDate = calendar.timegm(datetime.datetime.now().utctimetuple())
     page_data = getURL(BASE_URL_EPISODES % (jdata_list['id'], startDate, endDate))
     jdata_episode = json.loads(page_data)
-    
+
+    playlist = xbmc.PlayList(0)
+    playlist.clear()
+
+    showPos = 0
     for episode in jdata_episode:
         episode_date = time.strftime('%Y-%m-%d %H:%M', time.localtime(episode['plannedFrom']))
         episode_year = time.strftime('%Y', time.localtime(episode['plannedFrom']))
 
         li = xbmcgui.ListItem(episode_date)
 
-        li.setInfo('music', {'title': '%s %s' % (name, episode_date),
+        title = '%s %s' % (name, episode_date)
+        li.setInfo('music', {'title': title,
                              'artist': artist,
                              'year': episode_year})
         if thumbnail is not None:
             li.setThumbnailImage(thumbnail)
 
-        li.setProperty('IsPlayable', 'true')
-        mp3Url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
+        li.setProperty('IsPlayable', 'false')
+        url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
+
+        mp3Url = build_url({'mode': 'playURL',
+                            'url': url,
+                            'pos': showPos,
+                            })
+
         xbmcplugin.addDirectoryItem(handle=addon_handle, url=mp3Url, listitem=li, isFolder=False)
+        playlist.add(url, li)
+        showPos += 1
 
     xbmcplugin.endOfDirectory(addon_handle)
+
 
 def getCurrentShowName():
     log(' > getCurrentShowName')
@@ -384,7 +408,11 @@ def listSoundStoreCategory(category):
 
     page_data = getURL('%s?category=%s' % (BASE_URL_SOUNDSTORE, category))  
     jdata = json.loads(page_data)
- 
+
+    playlist = xbmc.PlayList(0)
+    playlist.clear()
+
+    showPos = 0
     for list in jdata:
         itemDate = list['date'] + ": " if list['date'] is not None else ''
         itemAuthor = list['author'] + ": " if list['author'] != '' else ''
@@ -396,37 +424,36 @@ def listSoundStoreCategory(category):
         li.setInfo('music', {'title': list['title'],
                              'artist': list['author'],
                              'year': itemDate})
-        li.setProperty('IsPlayable', 'true')
-        xbmcplugin.addDirectoryItem(handle=addon_handle, url=list['link'], listitem=li, isFolder=False)
-        
+        li.setProperty('IsPlayable', 'false')
+
+        mp3Url = build_url({'mode': 'playURL',
+                            'url': list['link'],
+                            'pos': showPos,
+                            })
+
+        xbmcplugin.addDirectoryItem(handle=addon_handle, url=mp3Url, listitem=li, isFolder=False)
+        playlist.add(list['link'], li)
+        showPos += 1
+
     xbmcplugin.endOfDirectory(addon_handle)
 
 
-def testInfoLabel(play):
-    log(' > testInfoLabel()')
-    m3uFile = getURL('https://tilos.hu/mp3/tilos-20141224-200000-221500.m3u')
-    for line in m3uFile.readlines():
-        print line
+def play(url, pos):
+    log(' > play(%s)' % url)
+    pos = int(pos[0]) if pos is not None else 0
 
-    return
+    player = xbmc.Player()
+    dialogWait = xbmcgui.DialogProgress()
+    dialogWait.create(getString(30038), getString(30037))
+    dialogWait.update(0)
+    xbmc.sleep(300)
+    player.play(xbmc.PlayList(0), None, False, pos)
+    dialogWait.close()
 
-    # file = '/Users/gabor/Downloads/05 - Pocket Calculator.mp3'
-
-    if not play:
-        url = build_url({'mode': 'testInfoLabelPlay', 'foldername': 'testInfoLabelPlay'})
-        li = xbmcgui.ListItem(label='[B]%s[/B]' % 'tilos-20141230-100000-123000.mp3', label2='myTitle')
-        li.setInfo('music', {'title': 'myTitle', 'artist': 'myArtist'})
-        li.setProperty('IsPlayable', 'true')
-        xbmcplugin.addDirectoryItem(handle=addon_handle, url=file, listitem=li, isFolder=False)
-
-        xbmcplugin.endOfDirectory(addon_handle)
-    # else:
-        # xbmc.Player(xbmc.PLAYER_CORE_MPLAYER).play(file)
 
 ############################################
 # Start plugin
 ############################################
-# log(' > mode: ' + mode[0] if mode is not None else '')
 
 if mode is None:
     listRootMenu()
@@ -470,4 +497,7 @@ elif mode[0] == 'listSoundStorePARTY':
     listSoundStoreCategory('PARTY')
 elif mode[0] == 'listSoundStoreSHOW':
     listSoundStoreCategory('SHOW')
-
+elif mode[0] == 'playURL':
+    play(args.get('url', None),
+         args.get('pos', None)
+         )
