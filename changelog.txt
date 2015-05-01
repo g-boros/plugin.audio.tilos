@@ -1,3 +1,7 @@
+v0.0.4
+- fix epoch handling due to API changes
+- remove thumbnail support
+
 v0.0.3
 - List shows by Date (specific,today,yesterday)
 - Display currently playing show name in main view

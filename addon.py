@@ -24,7 +24,7 @@ import re
 ############################################
 
 __plugin__ = "Tilos"
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 __author__ = 'Gabor Boros'
 __date__ = '2014-07-28'
 __addon__ = xbmcaddon.Addon()
@@ -32,13 +32,13 @@ __addonname__ = __addon__.getAddonInfo('name')
 
 BASE_URL = 'http://tilos.hu'
 BASE_URL_PAGE = 'http://tilos.hu/page'
-BASE_URL_SHOWS = BASE_URL + '/api/v0/show'
-BASE_URL_EPISODES = BASE_URL_SHOWS + '/%s/episodes?from=%d&to=%d'
-BASE_URL_EPISODES_BY_DATE = BASE_URL + '/api/v0/episode?start=%d&end=%d'
+BASE_URL_SHOWS = BASE_URL + '/api/v1/show'
+BASE_URL_EPISODES = BASE_URL_SHOWS + '/%s/episodes?start=%d&end=%d'
+BASE_URL_EPISODES_BY_DATE = BASE_URL + '/api/v1/episode?start=%d&end=%d'
 BASE_URL_SOUNDSTORE = BASE_URL + '/api/v1/mix'
-HEADERS = {'User-Agent' : 'XBMC Plugin v0.0.3'} 
-LIVE_URL_256 = 'http://stream.tilos.hu/tilos.m3u'
-LIVE_URL_128 = 'http://stream.tilos.hu/tilos_128.mp3.m3u'
+HEADERS = {'User-Agent' : 'XBMC Plugin v0.0.4'}
+LIVE_URL_256 = 'http://tilos.hu/api/v1/m3u/lastweek?stream=/tilos'
+LIVE_URL_128 = 'http://tilos.hu/api/v1/m3u/lastweek?stream=/tilos_128.mp3'
 
 dialogProgress = xbmcgui.DialogProgress()
 dialog = xbmcgui.Dialog()
@@ -108,17 +108,20 @@ def getString(stringID):
     
 
 def getUString(string):
-    return string.encode('utf8')
+    if string is None:
+        return ''
+    else:
+        return string.encode('utf8')
 
 
 def listRootMenu():
     log(' > listRootMenu()')
 
-    name_and_thumb = getCurrentShowName()
-    li = xbmcgui.ListItem('%s [I]%s[/I]' % (getString(30007), getUString(name_and_thumb[0])), thumbnailImage=name_and_thumb[1])
+    name = getCurrentShowName()
+    li = xbmcgui.ListItem('%s [I]%s[/I]' % (getString(30007), getUString(name)), thumbnailImage=name)
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=LIVE_URL_256, listitem=li, isFolder=False)
 
-    li = xbmcgui.ListItem('%s [I]%s[/I]' % (getString(30008), getUString(getCurrentShowName()[0])), iconImage='')
+    li = xbmcgui.ListItem('%s [I]%s[/I]' % (getString(30008), getUString(getCurrentShowName())), iconImage='')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=LIVE_URL_128, listitem=li, isFolder=False)
 
     url = build_url({'mode': 'listByDateYear', 'foldername': getString(30009)})
@@ -246,6 +249,9 @@ def listShowsByDay(year, month, day):
     startLocal = time.mktime(datetime.datetime(int(year), int(month), int(day), 0, 0, 0).timetuple())
     endLocal = time.mktime(datetime.datetime(int(year), int(month), int(day), 23, 59, 59).timetuple())
 
+    startLocal = int(startLocal * 1000)
+    endLocal = int(endLocal * 1000)
+
     page_data = getURL(BASE_URL_EPISODES_BY_DATE % (startLocal, endLocal))
     jdata = json.loads(page_data)
 
@@ -261,7 +267,7 @@ def listShowsByDay(year, month, day):
             episode.get('m3uUrl')):
 
             show = episode['show']
-            title = '%s - %s' % (datetime.datetime.fromtimestamp(episode['plannedFrom']).strftime('%H:%M'),
+            title = '%s - %s' % (datetime.datetime.fromtimestamp(episode['plannedFrom']/1000).strftime('%H:%M'),
                                  show['name'])
 
             li = xbmcgui.ListItem(title)
@@ -270,9 +276,6 @@ def listShowsByDay(year, month, day):
                                  'artist': show['name'],
                                  'year': year})
             li.setProperty('IsPlayable', 'false')
-
-            if show['banner'] is not None:
-                li.setThumbnailImage(show['banner'])
 
             url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
             mp3Url = build_url({'mode': 'playURL',
@@ -297,8 +300,6 @@ def listShows(type):
         if (list['type'] == type):
             url = build_url({'mode': '%s_%s_%s' % ('list', getUString(list['alias']), getUString(list['name'])), 'foldername': getUString(list['name'])})
             li = xbmcgui.ListItem(getUString(list['name']))
-            if list['banner'] is not None:
-                li.setThumbnailImage(list['banner'])
 
             if list['definition'] is not None:
                 li.setInfo('music', {'title': list['definition']})
@@ -321,43 +322,51 @@ def listShow(alias, name):
 
     page_data = getURL("%s/%s" % (BASE_URL_SHOWS, alias))
     jdata_show = json.loads(page_data)
-    thumbnail = jdata_show['banner']
 
-    artist = artist[:-1]
-    # Get all available episodes since 2009.01.01
-    startDate = calendar.timegm(datetime.datetime(2009,01,01,0,0).utctimetuple())
-    endDate = calendar.timegm(datetime.datetime.now().utctimetuple())
-    page_data = getURL(BASE_URL_EPISODES % (jdata_list['id'], startDate, endDate))
-    jdata_episode = json.loads(page_data)
+    startDate = None
+    endDate = None
+    for schedule in jdata_show['schedulings']:
+        startDate = schedule['validFrom']
+        endDate = schedule['validTo']
+        break
 
-    playlist = xbmc.PlayList(0)
-    playlist.clear()
+    # Some show doesn't have any file in the archive
+    if startDate is not None or endDate is not None:
 
-    showPos = 0
-    for episode in jdata_episode:
-        episode_date = time.strftime('%Y-%m-%d %H:%M', time.localtime(episode['plannedFrom']))
-        episode_year = time.strftime('%Y', time.localtime(episode['plannedFrom']))
+        artist = artist[:-1]
+        page_data = getURL(BASE_URL_EPISODES % (jdata_list['id'], startDate, endDate))
+        jdata_episode = json.loads(page_data)
 
-        li = xbmcgui.ListItem(episode_date)
+        playlist = xbmc.PlayList(0)
+        playlist.clear()
 
-        title = '%s %s' % (name, episode_date)
-        li.setInfo('music', {'title': title,
-                             'artist': artist,
-                             'year': episode_year})
-        if thumbnail is not None:
-            li.setThumbnailImage(thumbnail)
+        showPos = 0
+        for episode in jdata_episode:
 
-        li.setProperty('IsPlayable', 'false')
-        url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
+            if episode['show']['status'] is None or episode['m3uUrl'] is None:
+                continue
 
-        mp3Url = build_url({'mode': 'playURL',
-                            'url': url,
-                            'pos': showPos,
-                            })
+            episode_date = time.strftime('%Y-%m-%d %H:%M', time.localtime(episode['plannedFrom']/1000))
+            episode_year = time.strftime('%Y', time.localtime(episode['plannedFrom']/1000))
 
-        xbmcplugin.addDirectoryItem(handle=addon_handle, url=mp3Url, listitem=li, isFolder=False)
-        playlist.add(url, li)
-        showPos += 1
+            li = xbmcgui.ListItem(episode_date)
+
+            title = '%s %s' % (name, episode_date)
+            li.setInfo('music', {'title': title,
+                                 'artist': artist,
+                                 'year': episode_year})
+
+            li.setProperty('IsPlayable', 'false')
+            url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
+
+            mp3Url = build_url({'mode': 'playURL',
+                                'url': url,
+                                'pos': showPos,
+                                })
+
+            xbmcplugin.addDirectoryItem(handle=addon_handle, url=mp3Url, listitem=li, isFolder=False)
+            playlist.add(url, li)
+            showPos += 1
 
     xbmcplugin.endOfDirectory(addon_handle)
 
@@ -366,8 +375,9 @@ def getCurrentShowName():
     log(' > getCurrentShowName')
 
     now = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
-    start = round((now - 3 * 60 * 60) / 10) * 10
-    end = start + (8 * 60 * 60)
+    start = round((now - 3 * 60 * 60) / 10) * 10 * 1000
+    end = start + (8 * 60 * 60) * 1000
+    now *= 1000
 
     page_data = getURL(BASE_URL_EPISODES_BY_DATE % (start, end))
     jdata = json.loads(page_data)
@@ -375,7 +385,7 @@ def getCurrentShowName():
     for episode in jdata:
         if (episode['plannedFrom'] <= now and episode['plannedTo'] > now):
             list = episode['show']
-            return ' - %s' % list['name'].strip(), list['banner']
+            return ' - %s' % list['name'].strip()
 
     return ''
 
@@ -458,9 +468,9 @@ def play(url, pos):
 if mode is None:
     listRootMenu()
 elif mode[0] == 'talkShows':
-    listShows(1)
+    listShows('SPEECH')
 elif mode[0] == 'musicShows':
-    listShows(0)
+    listShows('MUSIC')
 elif mode[0].startswith('list_'):
     listShow(mode[0].split('_')[1], mode[0].split('_')[2])
 elif mode[0].startswith('listByDateYear'):
