@@ -1,3 +1,6 @@
+v0.0.5
+- various fixes to follow API changes
+
 v0.0.4
 - fix epoch handling due to API changes
 - remove thumbnail support

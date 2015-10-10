@@ -24,21 +24,21 @@ import re
 ############################################
 
 __plugin__ = "Tilos"
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 __author__ = 'Gabor Boros'
 __date__ = '2014-07-28'
 __addon__ = xbmcaddon.Addon()
 __addonname__ = __addon__.getAddonInfo('name')
 
-BASE_URL = 'http://tilos.hu'
-BASE_URL_PAGE = 'http://tilos.hu/page'
+BASE_URL = 'https://tilos.hu'
+BASE_URL_PAGE = 'https://tilos.hu/page'
 BASE_URL_SHOWS = BASE_URL + '/api/v1/show'
 BASE_URL_EPISODES = BASE_URL_SHOWS + '/%s/episodes?start=%d&end=%d'
 BASE_URL_EPISODES_BY_DATE = BASE_URL + '/api/v1/episode?start=%d&end=%d'
 BASE_URL_SOUNDSTORE = BASE_URL + '/api/v1/mix'
 HEADERS = {'User-Agent' : 'XBMC Plugin v0.0.4'}
-LIVE_URL_256 = 'http://tilos.hu/api/v1/m3u/lastweek?stream=/tilos'
-LIVE_URL_128 = 'http://tilos.hu/api/v1/m3u/lastweek?stream=/tilos_128.mp3'
+LIVE_URL_256 = 'http://stream.tilos.hu/tilos'
+LIVE_URL_128 = 'http://stream.tilos.hu/tilos_128.mp3'
 
 dialogProgress = xbmcgui.DialogProgress()
 dialog = xbmcgui.Dialog()
@@ -71,7 +71,7 @@ def log(msg):
             xbmc.log("[%s]: %s" % (__plugin__, msg))
 
 
-def build_url(query):
+def buildURL(query):
     return base_url + '?' + urllib.urlencode('' if query is None else query)
 
 
@@ -124,19 +124,19 @@ def listRootMenu():
     li = xbmcgui.ListItem('%s [I]%s[/I]' % (getString(30008), getUString(getCurrentShowName())), iconImage='')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=LIVE_URL_128, listitem=li, isFolder=False)
 
-    url = build_url({'mode': 'listByDateYear', 'foldername': getString(30009)})
+    url = buildURL({'mode': 'listByDateYear', 'foldername': getString(30009)})
     li = xbmcgui.ListItem(getString(30009), iconImage='')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
-    url = build_url({'mode': 'musicShows', 'foldername': getString(30002)})
+    url = buildURL({'mode': 'musicShows', 'foldername': getString(30002)})
     li = xbmcgui.ListItem(getString(30002), iconImage='')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
   
-    url = build_url({'mode': 'talkShows', 'foldername': getString(30001)})
+    url = buildURL({'mode': 'talkShows', 'foldername': getString(30001)})
     li = xbmcgui.ListItem(getString(30001), iconImage='')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
-    url = build_url({'mode': 'listSoundStore', 'foldername': getString(30012)})
+    url = buildURL({'mode': 'listSoundStore', 'foldername': getString(30012)})
     li = xbmcgui.ListItem(getString(30012), iconImage = '')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
@@ -146,16 +146,16 @@ def listRootMenu():
 def listYear(): 
     log(' > listYear()')
     
-    url = build_url({'mode': 'listByToday', 'foldername': getString(30010)})
+    url = buildURL({'mode': 'listByToday', 'foldername': getString(30010)})
     li = xbmcgui.ListItem(getString(30010), iconImage = '')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
     
-    url = build_url({'mode': 'listByYesterday', 'foldername': getString(30011)})
+    url = buildURL({'mode': 'listByYesterday', 'foldername': getString(30011)})
     li = xbmcgui.ListItem(getString(30011), iconImage = '')
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
     for year in range(datetime.date.today().year, 2008, -1):
-        url = build_url({'mode': '%s_%s' % ('listByDateMonth', str(year)), 'foldername': str(year)})
+        url = buildURL({'mode': '%s_%s' % ('listByDateMonth', str(year)), 'foldername': str(year)})
         li = xbmcgui.ListItem(str(year), iconImage = '')
         xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
         
@@ -217,7 +217,7 @@ def listMonth(year):
         months = range(12, 0, -1) 
 
     for month in months:
-        url = build_url({'mode': '%s_%s_%s' % ('listByDateDay', str(year), str(month)), 'foldername': month})
+        url = buildURL({'mode': '%s_%s_%s' % ('listByDateDay', str(year), str(month)), 'foldername': month})
         li = xbmcgui.ListItem(getMonthName(month), iconImage = '')
         xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
         
@@ -235,7 +235,7 @@ def listDay(year, month):
         days = calendar.monthrange(int(year), int(month))
 
     for day in range(days[1], 0, -1):
-        url = build_url({'mode': 'showsByDay_%s_%s_%s' % (year, month, str(day)), 
+        url = buildURL({'mode': 'showsByDay_%s_%s_%s' % (year, month, str(day)),
         'foldername': '%s_%s_%s' % (year, month, str(day))})
         li = xbmcgui.ListItem("%d - %s" % (day, getDayName(calendar.weekday(int(year), int(month), day))), iconImage = '')
         xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
@@ -278,7 +278,7 @@ def listShowsByDay(year, month, day):
             li.setProperty('IsPlayable', 'false')
 
             url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
-            mp3Url = build_url({'mode': 'playURL',
+            mp3Url = buildURL({'mode': 'playURL',
                                 'url': url,
                                 'pos': showPos,
                                 })
@@ -297,12 +297,13 @@ def listShows(type):
     jdata = json.loads(page_data)
 
     for list in jdata:
-        if (list['type'] == type):
-            url = build_url({'mode': '%s_%s_%s' % ('list', getUString(list['alias']), getUString(list['name'])), 'foldername': getUString(list['name'])})
+        if list['type'] == type:
+            url = buildURL({'mode': '%s_%s_%s' % ('list', getUString(list['alias']), getUString(list['name'])), 'foldername': getUString(list['name'])})
             li = xbmcgui.ListItem(getUString(list['name']))
 
-            if list['definition'] is not None:
+            if 'definition' in list:
                 li.setInfo('music', {'title': list['definition']})
+
             xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
             
     xbmcplugin.addSortMethod( handle=int(sys.argv[1]), sortMethod=xbmcplugin.SORT_METHOD_LABEL)
@@ -310,31 +311,24 @@ def listShows(type):
 
 
 def listShow(alias, name):
-    log(' > listShow(%s)' % alias)
+    log(' > listShow(%s, %s)' % (alias, name))
     
     # Get Show information
-    page_data = getURL(BASE_URL_SHOWS + '/' + alias)
-    jdata_list = json.loads(page_data)
+    page_data = getURL("%s/%s" % (BASE_URL_SHOWS, alias))
+    show = json.loads(page_data)
     
     artist = ''
-    for contributor in jdata_list['contributors']:
-        artist += ' %s,' % (getUString(contributor['author']['name']))
+    for contributor in show['contributors']:
+        artist += ' %s,' % (getUString(contributor['nick']))
 
-    page_data = getURL("%s/%s" % (BASE_URL_SHOWS, alias))
-    jdata_show = json.loads(page_data)
-
-    startDate = None
-    endDate = None
-    for schedule in jdata_show['schedulings']:
-        startDate = schedule['validFrom']
-        endDate = schedule['validTo']
-        break
+    endDate = calendar.timegm(datetime.datetime.utcnow().utctimetuple()) * 1000
+    startDate = endDate - (24 * 30 * 24 * 3600 * 1000)
 
     # Some show doesn't have any file in the archive
     if startDate is not None or endDate is not None:
 
         artist = artist[:-1]
-        page_data = getURL(BASE_URL_EPISODES % (jdata_list['id'], startDate, endDate))
+        page_data = getURL(BASE_URL_EPISODES % (show['alias'], startDate, endDate))
         jdata_episode = json.loads(page_data)
 
         playlist = xbmc.PlayList(0)
@@ -343,7 +337,7 @@ def listShow(alias, name):
         showPos = 0
         for episode in jdata_episode:
 
-            if episode['show']['status'] is None or episode['m3uUrl'] is None:
+            if episode['persistent'] == 'false' or 'm3uUrl' not in episode:
                 continue
 
             episode_date = time.strftime('%Y-%m-%d %H:%M', time.localtime(episode['plannedFrom']/1000))
@@ -359,7 +353,7 @@ def listShow(alias, name):
             li.setProperty('IsPlayable', 'false')
             url = re.sub('.m3u', '.mp3', episode['m3uUrl'])
 
-            mp3Url = build_url({'mode': 'playURL',
+            mp3Url = buildURL({'mode': 'playURL',
                                 'url': url,
                                 'pos': showPos,
                                 })
@@ -393,19 +387,19 @@ def getCurrentShowName():
 def listSoundStore():
     log(' > listSoundStore()')
 
-    url = build_url({'mode': 'listSoundStoreTALE', 'foldername': getString(30032)})
+    url = buildURL({'mode': 'listSoundStoreTALE', 'foldername': getString(30032)})
     li = xbmcgui.ListItem(getString(30032))
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
-    url = build_url({'mode': 'listSoundStoreDJ', 'foldername': getString(30033)})
+    url = buildURL({'mode': 'listSoundStoreDJ', 'foldername': getString(30033)})
     li = xbmcgui.ListItem(getString(30033))
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
-    url = build_url({'mode': 'listSoundStoreGUESTDJ', 'foldername': getString(30034)})
+    url = buildURL({'mode': 'listSoundStoreGUESTDJ', 'foldername': getString(30034)})
     li = xbmcgui.ListItem(getString(30034))
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
-    url = build_url({'mode': 'listSoundStoreSHOW', 'foldername': getString(30036)})
+    url = buildURL({'mode': 'listSoundStoreSHOW', 'foldername': getString(30036)})
     li = xbmcgui.ListItem(getString(30036))
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
@@ -424,7 +418,7 @@ def listSoundStoreCategory(category):
 
     showPos = 0
     for list in jdata:
-        itemDate = list['date'] + ": " if list['date'] is not None else ''
+        itemDate = list['date'] + ": " if 'date' in list else ''
         itemAuthor = list['author'] + ": " if list['author'] != '' else ''
 
         li = xbmcgui.ListItem('%s[B]%s[/B]%s' % (getUString(itemDate),
@@ -436,7 +430,7 @@ def listSoundStoreCategory(category):
                              'year': itemDate})
         li.setProperty('IsPlayable', 'false')
 
-        mp3Url = build_url({'mode': 'playURL',
+        mp3Url = buildURL({'mode': 'playURL',
                             'url': list['link'],
                             'pos': showPos,
                             })
